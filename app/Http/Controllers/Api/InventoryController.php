@@ -30,11 +30,31 @@ class InventoryController extends Controller
     }
 
     // تحديث بيانات مادة أو تعديل المخزون يدوياً
-    public function update(Request $request, InventoryItem $inventoryItem)
-    {
-        $inventoryItem->update($request->all());
-        return response()->json($inventoryItem);
+
+public function update(Request $request, InventoryItem $inventory)
+{
+    $request->validate([
+        'action' => 'required|in:add,subtract',
+        'amount' => 'required|numeric|min:0.1'
+    ]);
+
+    if ($request->action === 'add') {
+        $inventory->quantity += $request->amount;
+    } else {
+        // نمنع الخصم ليكون تحت الصفر
+        if ($inventory->quantity < $request->amount) {
+            return response()->json(['message' => 'الكمية المراد خصمها أكبر من المتوفر!'], 422);
+        }
+        $inventory->quantity -= $request->amount;
     }
+
+    $inventory->save();
+
+    return response()->json([
+        'message' => 'تم تحديث المخزون بنجاح',
+        'item' => $inventory
+    ]);
+}
 
     public function destroy(InventoryItem $inventoryItem)
     {
