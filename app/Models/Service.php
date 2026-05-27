@@ -13,4 +13,10 @@ class Service extends Model
     {
         return $this->belongsToMany(CaseReport::class);
     }
+    public function materials(): BelongsToMany
+{
+    return $this->belongsToMany(InventoryItem::class, 'service_materials')
+                ->withPivot('quantity')
+                ->withTimestamps();
+}
 }

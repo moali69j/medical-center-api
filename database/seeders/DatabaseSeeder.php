@@ -19,5 +19,6 @@ class DatabaseSeeder extends Seeder
         ServiceSeeder::class,
         InventorySeeder::class,
     ]);
+    \App\Models\Setting::create(['key' => 'credit_price', 'value' => '1000']);
 }
 }

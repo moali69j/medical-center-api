@@ -16,3 +16,13 @@ Route::apiResource('services', ServiceController::class);
 Route::get('patients/search', [PatientController::class, 'search']);
 // مسار حفظ الحالة المتكاملة
 Route::post('cases', [App\Http\Controllers\Api\CaseReportController::class, 'store']);
+Route::post('settings/credit-price', function (Illuminate\Http\Request $request) {
+    $request->validate(['credit_price' => 'required|numeric']);
+    
+    $setting = App\Models\Setting::updateOrCreate(
+        ['key' => 'credit_price'],
+        ['value' => $request->credit_price]
+    );
+
+    return response()->json(['message' => 'تم تحديث سعر الكريدت بنجاح', 'value' => $setting->value]);
+});
