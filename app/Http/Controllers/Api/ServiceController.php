@@ -6,13 +6,15 @@
 use App\Http\Controllers\Controller;
 use App\Models\Service;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\DB;
 class ServiceController extends Controller
 {
    public function index()
 {
     // جلب سعر الكريدت الحالي من جدول الإعدادات
-    $creditPrice = (float) Setting::get('credit_price', 1000);
+    // استبدل السطر القديم بهذا:
+$creditPriceSetting = \App\Models\Setting::where('key', 'credit_price')->first();
+$creditPrice = $creditPriceSetting ? (float)$creditPriceSetting->value : 1000.00;
 
     // جلب الخدمات مع موادها وحساب السعر ديناميكياً لكل خدمة
     $services = Service::with('materials')->get()->map(function ($service) use ($creditPrice) {
@@ -28,27 +30,34 @@ class ServiceController extends Controller
 
    public function store(Request $request)
 {
-    $validated = $request->validate([
-        'name' => 'required|string',
-        'credits_required' => 'required|integer',
-        'materials' => 'nullable|array', // مصفوفة المواد: [['id' => 1, 'quantity' => 2]]
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'credits_required' => 'required|integer|min:0',
+        'materials' => 'nullable|array',
+        'materials.*.id' => 'required|exists:inventory_items,id',
+        'materials.*.quantity' => 'required|numeric|min:0.1'
     ]);
 
-    return DB::transaction(function () use ($request, $validated) {
+    return DB::transaction(function () use ($request) {
         // 1. إنشاء الخدمة
         $service = Service::create([
-            'name' => $validated['name'],
-            'credits_required' => $validated['credits_required']
+            'name' => $request->name,
+            'credits_required' => $request->credits_required
         ]);
 
-        // 2. ربط المواد بالخدمة إذا وُجدت
-        if (!empty($request->materials)) {
+        // 2. ربط المواد عبر الجدول الوسيط إذا أرسلها المستخدم
+        if ($request->has('materials') && is_array($request->materials)) {
             foreach ($request->materials as $material) {
-                $service->materials()->attach($material['id'], ['quantity' => $material['quantity']]);
+                $service->materials()->attach($material['id'], [
+                    'quantity' => $material['quantity']
+                ]);
             }
         }
 
-        return response()->json($service->load('materials'), 201);
+        return response()->json([
+            'message' => 'تم إنشاء الخدمة وربط مستلزماتها بنجاح',
+            'service' => $service->load('materials')
+        ], 201);
     });
 }
 
