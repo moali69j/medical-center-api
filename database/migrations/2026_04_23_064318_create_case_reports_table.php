@@ -14,18 +14,16 @@ return new class extends Migration
        Schema::create('case_reports', function (Blueprint $table) {
     $table->id();
     $table->foreignId('patient_id')->constrained()->onDelete('cascade');
-    $table->string('case_type'); // internal أو external
-    
-    // العلامات الحيوية
+    $table->string('case_type'); // internal, external
     $table->string('blood_pressure')->nullable();
     $table->string('sugar_level')->nullable();
     $table->string('oxygen_saturation')->nullable();
-    
-    // المالية
-    $table->decimal('credit_price_at_time', 10, 2); // سعر النقطة وقت الحالة
-    $table->decimal('total_paid', 10, 2); // المبلغ الذي دفعه المريض فعلياً
-    
-    $table->text('case_notes')->nullable(); // ملاحظات الممرض لهذه الزيارة
+    $table->decimal('credit_price_at_time', 10, 2);
+    $table->decimal('total_paid', 10, 2); // الكاش المستلم اليوم
+    $table->decimal('total_cost_of_materials', 10, 2)->default(0.00); // تكلفة المواد المستهلكة
+    $table->decimal('center_share', 10, 2)->default(0.00); // حصة المركز الصافية
+    $table->decimal('staff_share', 10, 2)->default(0.00);  // حصة الكادر الصافية
+    $table->text('visit_notes')->nullable(); // ملاحظات زيارة اليوم فقط
     $table->timestamps();
 });
     }

@@ -9,25 +9,40 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class CaseReport extends Model
 {
     protected $fillable = [
-        'patient_id', 'case_type', 'blood_pressure', 
-        'sugar_level', 'oxygen_saturation', 
-        'credit_price_at_time', 'total_paid', 'case_notes'
+        'patient_id',
+        'case_type',
+        'blood_pressure',
+        'sugar_level',
+        'oxygen_saturation',
+        'credit_price_at_time',
+        'total_paid',
+        'total_cost_of_materials',
+        'center_share',
+        'staff_share',
+        'visit_notes'
     ];
 
-    // العلاقة مع المريض
+    /**
+     * علاقة الحالة بالمرضى (كل حالة تنتمي لمريض واحد)
+     */
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
     }
 
-    // الخدمات التي قُدمت في هذه الحالة
+    /**
+     * علاقة الحالة بالخدمات (الحالة قد تضم عدة خدمات)
+     */
     public function services(): BelongsToMany
     {
-        return $this->belongsToMany(Service::class);
+        return $this->belongsToMany(Service::class, 'case_report_service')->withTimestamps();
     }
 
-    // المواد الإضافية التي استُهلكت في هذه الحالة
-    public function extraItems(): BelongsToMany
+    /**
+     * العلاقة التي كانت مفقودة:
+     * علاقة الحالة بالمواد الإضافية المستهلكة خارج الخدمة
+     */
+    public function items(): BelongsToMany
     {
         return $this->belongsToMany(InventoryItem::class, 'case_report_item')
                     ->withPivot('used_quantity')

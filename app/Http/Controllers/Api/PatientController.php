@@ -8,20 +8,27 @@ use Illuminate\Http\Request;
 
 class PatientController extends Controller
 {
-    // دالة البحث عن مريض بالهاتف أو الاسم أو الرقم الوطني
-    public function search(Request $request)
-    {
-        $query = $request->query('query');
+   public function search(Request $request)
+{
+    $query = $request->get('query');
 
-        $patient = Patient::where('phone', $query)
-            ->orWhere('national_id', $query)
-            ->orWhere('full_name', 'LIKE', "%{$query}%")
-            ->first();
-
-        if ($patient) {
-            return response()->json($patient);
-        }
-
-        return response()->json(null, 404);
+    if (empty($query)) {
+        return response()->json([]);
     }
+
+    // جلب المرضى مع التأكيد على جلب كافة الحقول
+    $patients = Patient::where('full_name', 'LIKE', "%{$query}%")
+        ->orWhere('phone', 'LIKE', "%{$query}%")
+        ->orWhere('national_id', 'LIKE', "%{$query}%")
+        ->with(['caseReports' => function($q) {
+            $q->latest()->with('services');
+        }])
+        ->get()
+        ->map(function($patient) {
+            $patient->cases_count = $patient->caseReports->count();
+            return $patient;
+        });
+
+    return response()->json($patients);
+}
 }

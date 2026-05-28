@@ -14,10 +14,12 @@ return new class extends Migration
         Schema::create('inventory_items', function (Blueprint $table) {
     $table->id();
     $table->string('name');
-    $table->decimal('quantity', 10, 2)->default(0); // الكمية المتاحة
-    $table->string('unit'); // قطعة، ليتر، إلخ
-    $table->decimal('threshold', 10, 2)->default(5); // حد العتبة للتنبيه
-    $table->boolean('is_measurable')->default(true); // هل تُخصم آلياً أم يدوياً؟
+    $table->decimal('quantity', 10, 2);
+    $table->string('unit');
+    $table->decimal('threshold', 10, 2);
+    $table->boolean('is_measurable')->default(true);
+    $table->decimal('cost_price', 10, 2)->default(0.00);   // سعر التكلفة لشراء القطعة
+    $table->decimal('selling_price', 10, 2)->default(0.00); // سعر البيع كاش خارج الخدمة
     $table->timestamps();
 });
     }

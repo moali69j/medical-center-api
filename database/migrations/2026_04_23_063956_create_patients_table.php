@@ -11,16 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('patients', function (Blueprint $table) {
+       Schema::create('patients', function (Blueprint $table) {
     $table->id();
-    $table->string('full_name');
-    $table->string('phone')->unique();
-    $table->string('national_id')->nullable()->unique();
+    $table->string('full_name')->index(); // إضافة index للبحث السريع
+    $table->string('phone')->nullable()->index(); // قابل للبحث والغياب
+    $table->string('national_id')->nullable()->unique()->index(); 
     $table->string('address')->nullable();
     $table->string('blood_type')->nullable();
-    $table->text('chronic_diseases')->nullable(); // للأمراض المزمنة
-    $table->text('current_medications')->nullable(); // للأدوية الحالية
-    $table->text('extra_notes')->nullable(); // للعمليات السابقة أو ملاحظات خاصة
+    $table->text('chronic_diseases')->nullable();
+    $table->text('current_medications')->nullable();
+    $table->text('permanent_medical_notes')->nullable(); // الملاحظات الدائمة والعمليات
     $table->timestamps();
 });
     }
