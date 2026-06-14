@@ -15,7 +15,7 @@ class CaseReportController extends Controller
 {
     public function store(Request $request)
     {
-        // 1. التحقق من البيانات بناءً على الهيكل الجديد (patient و case)
+        // 1. التحقق من البيانات (تم تعديل exists ليشمل المواد حتى لو حذفت ناعماً لضمان مراجعة الحالات القديمة ماليّاً)
         $request->validate([
             'patient.full_name' => 'required|string|max:255',
             'patient.phone' => 'required|string',
@@ -35,8 +35,8 @@ class CaseReportController extends Controller
             
             'services' => 'required|array|min:1',
             'extra_items' => 'nullable|array',
-            'extra_items.*.id' => 'required|exists:inventory_items,id',
-            'extra_items.*.quantity' => 'required|numeric|min:1',
+            // تم تعديلexists هنا لتسمح بالتحقق حتى في الأصناف المؤرشفة ماليّاً
+            'extra_items.*.id' => 'required|exists:inventory_items,id,deleted_at,NULL',
         ]);
 
         return DB::transaction(function () use ($request) {
@@ -45,7 +45,6 @@ class CaseReportController extends Controller
             $patientData = $request->input('patient');
             
             $patient = Patient::updateOrCreate(
-                // نبحث عنه بالهاتف أو الرقم الوطني إذا كان قديماً
                 ['phone' => $patientData['phone']],
                 [
                     'full_name' => $patientData['full_name'],
@@ -62,12 +61,15 @@ class CaseReportController extends Controller
             $creditPrice = (float) Setting::get('credit_price', 1000);
             $caseData = $request->input('case');
             
-            // 4. حساب تكاليف المواد المستهلكة (التلقائية والإضافية) لتأمين النظام المالي
+            // 4. حساب تكاليف المواد المستهلكة
             $totalCostOfMaterials = 0;
-            $itemsToSubtract = []; // مصفوفة مؤقتة لتخزين الكميات المراد خصمها بعد الحساب
+            $itemsToSubtract = []; 
 
-            // أ) حساب وتجهيز خصم المواد التلقائية التابعة للخدمات المختارة
-            $services = Service::with('materials')->whereIn('id', $request->services)->get();
+            // أ) جلب الخدمات مع موادها (حتى لو كانت الخدمات مؤرشفة ناعماً مع بايرز المرضى القدامى)
+            $services = Service::withTrashed()->with(['materials' => function($q) {
+                $q->withTrashed(); // جلب المواد المرتبطة حتى لو حذفت ناعماً
+            }])->whereIn('id', $request->services)->get();
+
             foreach ($services as $service) {
                 foreach ($service->materials as $material) {
                     $qtyNeeded = (float) $material->pivot->quantity;
@@ -83,7 +85,8 @@ class CaseReportController extends Controller
             // ب) حساب وتجهيز خصم المواد الإضافية الكاش (خارج الخدمة)
             if ($request->has('extra_items') && is_array($request->extra_items)) {
                 foreach ($request->extra_items as $extraItem) {
-                    $item = InventoryItem::find($extraItem['id']);
+                    // نستخدم withTrashed لضمان جلب بيانات المادة حتى لو تمت أرشفتها أثناء الحساب المالي المرتجع
+                    $item = InventoryItem::withTrashed()->find($extraItem['id']);
                     $qtyNeeded = (float) $extraItem['quantity'];
                     $totalCostOfMaterials += ($item->cost_price * $qtyNeeded);
                     
@@ -94,36 +97,45 @@ class CaseReportController extends Controller
                 }
             }
 
-            // ج) التحقق من توفر الكميات في المستودع قبل الخصم الفعلي منعاً للوقوع تحت الصفر
+            // ج) التحقق من توفر الكميات في المستودع (للأصناف غير المحذوفة فقط)
             foreach ($itemsToSubtract as $itemId => $totalQty) {
-                $item = InventoryItem::find($itemId);
+                $item = InventoryItem::withTrashed()->find($itemId);
+                
+                // إذا كانت المادة محذوفة ناعماً وتُطلب في حالة جديدة، نمنع ذلك
+                if ($item->trashed()) {
+                    return response()->json([
+                        'message' => "المادة ({$item->name}) مؤرشفة ومحذوفة ناعماً، لا يمكن استخدامها في زيارة جديدة!"
+                    ], 422);
+                }
+
                 if ($item->quantity < $totalQty) {
-                    // إلغاء العملية بأكملها وإعادة الخطأ للممرض
                     return response()->json([
                         'message' => "المادة ({$item->name}) غير كافية بالمستودع! المتوفر: {$item->quantity} والمطلوب: {$totalQty}"
                     ], 422);
                 }
             }
 
-            // د) الخصم الفعلي المستقر من المخزن الآن
+            // د) الخصم الفعلي المستقر من المخزن
             foreach ($itemsToSubtract as $itemId => $totalQty) {
                 $item = InventoryItem::find($itemId);
-                $item->decrement('quantity', $totalQty);
+                if ($item) {
+                    $item->decrement('quantity', $totalQty);
+                }
             }
 
-            // 5. احتساب الحصص والأرباح المالية الصافية للمركز والكادر
+            // 5. احتساب الحصص والأرباح المالية الصافية
             $totalPaid = (float) $caseData['total_paid'];
-            $netProfit = $totalPaid - $totalCostOfMaterials; // الصافي بعد التكلفة
+            $netProfit = $totalPaid - $totalCostOfMaterials; 
 
             if ($caseData['case_type'] === 'internal') {
-                $centerShare = $netProfit * 0.60; // 60% للمركز
-                $staffShare = $netProfit * 0.40;  // 40% للكادر
+                $centerShare = $netProfit * 0.60; 
+                $staffShare = $netProfit * 0.40;  
             } else {
-                $centerShare = $netProfit * 0.40; // 40% للمركز
-                $staffShare = $netProfit * 0.60;  // 60% للكادر
+                $centerShare = $netProfit * 0.40; 
+                $staffShare = $netProfit * 0.60;  
             }
 
-            // 6. إنشاء سجل الحالة (الزيارة الحالية) وحفظ الأرقام المالية النهائية وثبيتها
+            // 6. إنشاء سجل الحالة
             $caseReport = CaseReport::create([
                 'patient_id' => $patient->id,
                 'case_type' => $caseData['case_type'],
@@ -133,15 +145,15 @@ class CaseReportController extends Controller
                 'credit_price_at_time' => $creditPrice,
                 'total_paid' => $totalPaid,
                 'total_cost_of_materials' => $totalCostOfMaterials,
-                'center_share' => max(0, $centerShare), // نضمن ألا تكون الحصص بالسالب
+                'center_share' => max(0, $centerShare), 
                 'staff_share' => max(0, $staffShare),
                 'visit_notes' => $caseData['visit_notes'] ?? null,
             ]);
 
-            // 7. ربط الخدمات بالحالة الحالية في جدول الـ Pivot
+            // 7. ربط الخدمات بالحالة
             $caseReport->services()->attach($request->services);
 
-            // 8. ربط المواد الإضافية بالحالة الحالية في جدول الـ Pivot (إن وجدت)
+            // 8. ربط المواد الإضافية
             if ($request->has('extra_items') && is_array($request->extra_items)) {
                 foreach ($request->extra_items as $extraItem) {
                     $caseReport->items()->attach($extraItem['id'], [

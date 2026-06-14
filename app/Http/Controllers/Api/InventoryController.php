@@ -8,13 +8,14 @@ use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
-    // عرض كل المواد
-    public function index()
-    {
-        return response()->json(InventoryItem::all());
-    }
+public function index()
+{
+    // لارافيل هنا سيتكفل بجلب العناصر غير المحذوفة تلقائياً وبأعلى كفاءة وسرعة
+    $items = InventoryItem::latest()->get();
+    
+    return response()->json($items);
+}
 
-    // إضافة مادة جديدة للمخزن أو زيادة الكمية
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -22,43 +23,43 @@ class InventoryController extends Controller
             'quantity' => 'required|numeric',
             'unit' => 'required|string',
             'threshold' => 'required|numeric',
-            'is_measurable' => 'required|boolean'
+            'is_measurable' => 'required|boolean',
+            'cost_price' => 'required|numeric|min:0' // إضافة حقل التكلفة هنا
         ]);
 
         $item = InventoryItem::create($validated);
         return response()->json($item, 201);
     }
 
-    // تحديث بيانات مادة أو تعديل المخزون يدوياً
-
-public function update(Request $request, InventoryItem $inventory)
+   // تعديل دالة الـ update لتستقبل المتغير المربوط بالـ Resource تلقائياً
+public function update(Request $request, $inventory)
 {
+    // جلب العنصر باستخدام المسمى المطابق للمسار
+    $item = InventoryItem::findOrFail($inventory);
+    
     $request->validate([
         'action' => 'required|in:add,subtract',
         'amount' => 'required|numeric|min:0.1'
     ]);
 
     if ($request->action === 'add') {
-        $inventory->quantity += $request->amount;
+        $item->quantity += $request->amount;
     } else {
-        // نمنع الخصم ليكون تحت الصفر
-        if ($inventory->quantity < $request->amount) {
+        if ($item->quantity < $request->amount) {
             return response()->json(['message' => 'الكمية المراد خصمها أكبر من المتوفر!'], 422);
         }
-        $inventory->quantity -= $request->amount;
+        $item->quantity -= $request->amount;
     }
 
-    $inventory->save();
-
-    return response()->json([
-        'message' => 'تم تحديث المخزون بنجاح',
-        'item' => $inventory
-    ]);
+    $item->save();
+    return response()->json(['message' => 'تم تحديث المخزون بنجاح', 'item' => $item]);
 }
 
-    public function destroy(InventoryItem $inventoryItem)
-    {
-        $inventoryItem->delete();
-        return response()->json(null, 204);
-    }
+public function destroy($id)
+{
+    $item = InventoryItem::findOrFail($id);
+    $item->delete(); // سيقوم بوضع تاريخ الحذف في الخلية فقط دون مسح حقيقي
+    
+    return response()->json(['message' => 'تم نقل المادة للأرشيف المخفي بنجاح']);
+}
 }

@@ -15,6 +15,8 @@ return new class extends Migration
     $table->id();
     $table->string('name');
     $table->integer('credits_required'); // عدد النقاط لهذه الخدمة
+    $table->softDeletes(); // هذا السطر ينشئ تلقائياً عمود deleted_at في قاعدة البيانات
+
     $table->timestamps();
 });
     }

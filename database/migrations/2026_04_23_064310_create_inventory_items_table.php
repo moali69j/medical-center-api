@@ -20,6 +20,8 @@ return new class extends Migration
     $table->boolean('is_measurable')->default(true);
     $table->decimal('cost_price', 10, 2)->default(0.00);   // سعر التكلفة لشراء القطعة
     $table->decimal('selling_price', 10, 2)->default(0.00); // سعر البيع كاش خارج الخدمة
+$table->softDeletes(); // هذا السطر ينشئ تلقائياً عمود deleted_at في قاعدة البيانات
+
     $table->timestamps();
 });
     }
