@@ -8,6 +8,17 @@ use Illuminate\Http\Request;
 
 class PatientController extends Controller
 {
+    // جلب قائمة أرشيف كافة المرضى المسجلين بالمركز مع عداد زياراتهم
+public function index()
+{
+    $patients = Patient::latest()->get()->map(function($patient) {
+        // حساب عدد الحالات/الزيارات الإجمالية لكل مريض تلقائياً ليعرف مدير المركز ولائه للمركز
+        $patient->cases_count = $patient->caseReports()->count();
+        return $patient;
+    });
+
+    return response()->json($patients);
+}
    public function search(Request $request)
 {
     $query = $request->get('query');

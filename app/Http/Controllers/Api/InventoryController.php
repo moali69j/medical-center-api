@@ -34,7 +34,6 @@ public function index()
    // تعديل دالة الـ update لتستقبل المتغير المربوط بالـ Resource تلقائياً
 public function update(Request $request, $inventory)
 {
-    // جلب العنصر باستخدام المسمى المطابق للمسار
     $item = InventoryItem::findOrFail($inventory);
     
     $request->validate([
@@ -43,16 +42,28 @@ public function update(Request $request, $inventory)
     ]);
 
     if ($request->action === 'add') {
+        // 1. زيادة الكمية في المستودع
         $item->quantity += $request->amount;
+        $item->save();
+
+        // 2. هندسة مالية آليّة: توليد مصروف فوري بقيمة الفاتورة الخارجة من الخزنة
+        $totalCost = $request->amount * (float) $item->cost_price;
+        
+        \App\Models\Expense::create([
+            'amount' => $totalCost,
+            'category' => 'مشتريات مستودع',
+            'notes' => "توريد تلقائي لكمية ({$request->amount} {$item->unit}) من المادة: [{$item->name}]"
+        ]);
+
     } else {
         if ($item->quantity < $request->amount) {
             return response()->json(['message' => 'الكمية المراد خصمها أكبر من المتوفر!'], 422);
         }
         $item->quantity -= $request->amount;
+        $item->save();
     }
 
-    $item->save();
-    return response()->json(['message' => 'تم تحديث المخزون بنجاح', 'item' => $item]);
+    return response()->json(['message' => 'تم تحديث المخزون، وتسجيل الحساب المالي في الخزنة تلقائياً!', 'item' => $item]);
 }
 
 public function destroy($id)

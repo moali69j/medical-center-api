@@ -32,3 +32,15 @@ Route::put('settings/credit-price', function (Illuminate\Http\Request $request) 
         'value' => $setting->value
     ], 200);
 });
+// مسار جلب التقارير المالية المفلترة والتحليلات وإحصائيات الإكسل
+Route::get('financial/reports', [App\Http\Controllers\Api\FinancialController::class, 'getReport']);
+
+// مسارات إدارة المصاريف التشغيلية (إضافة، عرض، حذف ناعم)
+Route::apiResource('expenses', App\Http\Controllers\Api\ExpenseController::class);
+// مسار جلب تفاصيل وجداول مستحقات حصص الكادر الطبي المفلترة زمنياً
+Route::get('financial/staff-reports', [App\Http\Controllers\Api\FinancialController::class, 'getStaffReport']);
+// تأكد من وجود هذا السطر لفتح نقطة الاتصال لجدول المرضى بالكامل
+Route::get('patients', [App\Http\Controllers\Api\PatientController::class, 'index']);
+
+// أو إذا كنت تستخدم الـ Resource كاملاً تأكد أنه مكتوب بصيغة الجمع هكذا:
+Route::apiResource('patients', App\Http\Controllers\Api\PatientController::class);
