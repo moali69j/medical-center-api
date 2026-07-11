@@ -44,3 +44,23 @@ Route::get('patients', [App\Http\Controllers\Api\PatientController::class, 'inde
 
 // أو إذا كنت تستخدم الـ Resource كاملاً تأكد أنه مكتوب بصيغة الجمع هكذا:
 Route::apiResource('patients', App\Http\Controllers\Api\PatientController::class);
+
+/*
+|--------------------------------------------------------------------------
+| Excel Export Routes
+|--------------------------------------------------------------------------
+| GET /api/export/patients            — تصدير كل المرضى
+| GET /api/export/cases               — تصدير الحالات (يدعم from_date, to_date)
+| GET /api/export/expenses            — تصدير المصاريف (يدعم from_date, to_date)
+| GET /api/export/inventory           — تصدير قائمة المستودع
+*/
+Route::prefix('export')->group(function () {
+    Route::get('patients',  [App\Http\Controllers\Api\ExportController::class, 'patients']);
+    Route::get('cases',     [App\Http\Controllers\Api\ExportController::class, 'cases']);
+    Route::get('expenses',  [App\Http\Controllers\Api\ExportController::class, 'expenses']);
+    Route::get('inventory', [App\Http\Controllers\Api\ExportController::class, 'inventory']);
+});
+
+// مسارات النسخ الاحتياطي والاستعادة
+Route::post('backup/run', [App\Http\Controllers\Api\BackupController::class, 'run']);
+Route::post('backup/restore', [App\Http\Controllers\Api\BackupController::class, 'restore']);

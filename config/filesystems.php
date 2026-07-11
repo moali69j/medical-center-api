@@ -46,6 +46,12 @@ return [
             'throw' => false,
             'report' => false,
         ],
+        'clinic_backups' => [
+            'driver' => 'local',
+            'root' => env('BACKUP_PATH', 'C:\\Medical Center\\Backups'),
+            'throw' => false,
+            'report' => false,
+        ],
 
         's3' => [
             'driver' => 's3',
@@ -59,6 +65,7 @@ return [
             'throw' => false,
             'report' => false,
         ],
+     
 
     ],
 

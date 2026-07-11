@@ -20,10 +20,19 @@ class ExpenseController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric|min:1',
             'category' => 'required|string',
-            'notes' => 'nullable|string'
+            'notes' => 'nullable|string',
+            'case_id' => 'nullable|exists:case_reports,id'
         ]);
 
-        $expense = Expense::create($validated);
+        $expense = Expense::create([
+            'amount' => $validated['amount'],
+            'category' => $validated['category'],
+            'notes' => $validated['notes'] ?? null
+        ]);
+
+        if (isset($validated['case_id'])) {
+            \App\Models\CaseReport::where('id', $validated['case_id'])->update(['is_paid_to_staff' => true]);
+        }
 
         return response()->json([
             'message' => 'تم تسجيل المصروف بنجاح في الخزنة الحالية',

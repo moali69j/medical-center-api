@@ -109,8 +109,8 @@ public function getStaffReport(Request $request)
     $fromDate = $request->query('from_date');
     $toDate = $request->query('to_date');
 
-    // بناء الاستعلام لحصص الكادر
-    $caseQuery = CaseReport::with('patient');
+    // بناء الاستعلام لحصص الكادر (للحالات التي لم يتم تصفيتها بعد فقط)
+    $caseQuery = CaseReport::with('patient')->where('is_paid_to_staff', false);
 
     // حماية: نطبق الفلترة الزمنية فقط إذا قام المستخدم باختيار تاريخ فعلي من الواجهة
     if (!empty($fromDate)) {

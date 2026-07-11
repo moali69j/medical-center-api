@@ -8,38 +8,41 @@ use Illuminate\Http\Request;
 
 class PatientController extends Controller
 {
-    // جلب قائمة أرشيف كافة المرضى المسجلين بالمركز مع عداد زياراتهم
-public function index()
-{
-    $patients = Patient::latest()->get()->map(function($patient) {
-        // حساب عدد الحالات/الزيارات الإجمالية لكل مريض تلقائياً ليعرف مدير المركز ولائه للمركز
-        $patient->cases_count = $patient->caseReports()->count();
-        return $patient;
-    });
+    /**
+     * جلب قائمة أرشيف كافة المرضى المسجلين بالمركز مع عداد زياراتهم.
+     * Fixed: uses withCount() instead of map()+count() to avoid N+1 queries.
+     * Paginated to prevent loading thousands of records at once.
+     */
+    public function index()
+    {
+        $patients = Patient::withCount('caseReports')
+            ->latest()
+            ->paginate(15);
 
-    return response()->json($patients);
-}
-   public function search(Request $request)
-{
-    $query = $request->get('query');
-
-    if (empty($query)) {
-        return response()->json([]);
+        return response()->json($patients);
     }
 
-    // جلب المرضى مع التأكيد على جلب كافة الحقول
-    $patients = Patient::where('full_name', 'LIKE', "%{$query}%")
-        ->orWhere('phone', 'LIKE', "%{$query}%")
-        ->orWhere('national_id', 'LIKE', "%{$query}%")
-        ->with(['caseReports' => function($q) {
-            $q->latest()->with('services');
-        }])
-        ->get()
-        ->map(function($patient) {
-            $patient->cases_count = $patient->caseReports->count();
-            return $patient;
-        });
+    /**
+     * البحث عن مرضى بالاسم أو الهاتف أو رقم الهوية.
+     * Fixed: uses withCount() and paginate() for efficiency.
+     */
+    public function search(Request $request)
+    {
+        $query = $request->input('query');
 
-    return response()->json($patients);
-}
+        if (empty($query)) {
+            return response()->json([]);
+        }
+
+        $patients = Patient::withCount('caseReports')
+            ->where('full_name', 'LIKE', "%{$query}%")
+            ->orWhere('phone', 'LIKE', "%{$query}%")
+            ->orWhere('national_id', 'LIKE', "%{$query}%")
+            ->with(['caseReports' => function ($q) {
+                $q->latest()->with('services');
+            }])
+            ->paginate(15);
+
+        return response()->json($patients);
+    }
 }

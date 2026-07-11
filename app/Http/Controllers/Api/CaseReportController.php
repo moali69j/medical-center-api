@@ -98,8 +98,9 @@ class CaseReportController extends Controller
             }
 
             // ج) التحقق من توفر الكميات في المستودع (للأصناف غير المحذوفة فقط)
+            // lockForUpdate() يمنع القراءة المتزامنة في نفس الوقت من طلبين مختلفين (race condition)
             foreach ($itemsToSubtract as $itemId => $totalQty) {
-                $item = InventoryItem::withTrashed()->find($itemId);
+                $item = InventoryItem::withTrashed()->lockForUpdate()->find($itemId);
                 
                 // إذا كانت المادة محذوفة ناعماً وتُطلب في حالة جديدة، نمنع ذلك
                 if ($item->trashed()) {
@@ -117,7 +118,7 @@ class CaseReportController extends Controller
 
             // د) الخصم الفعلي المستقر من المخزن
             foreach ($itemsToSubtract as $itemId => $totalQty) {
-                $item = InventoryItem::find($itemId);
+                $item = InventoryItem::lockForUpdate()->find($itemId);
                 if ($item) {
                     $item->decrement('quantity', $totalQty);
                 }

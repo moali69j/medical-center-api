@@ -19,6 +19,7 @@ class CaseReport extends Model
         'total_cost_of_materials',
         'center_share',
         'staff_share',
+        'is_paid_to_staff',
         'visit_notes'
     ];
 
