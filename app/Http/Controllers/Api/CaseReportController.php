@@ -15,11 +15,12 @@ class CaseReportController extends Controller
 {
     public function store(Request $request)
     {
-        // 1. التحقق من البيانات (تم تعديل exists ليشمل المواد حتى لو حذفت ناعماً لضمان مراجعة الحالات القديمة ماليّاً)
+        // 1. التحقق من البيانات مع التحقق من حقل العمر
         $request->validate([
             'patient.full_name' => 'required|string|max:255',
             'patient.phone' => 'required|string',
             'patient.national_id' => 'nullable|string',
+            'patient.age' => 'nullable|integer|min:0|max:120',
             'patient.address' => 'nullable|string',
             'patient.blood_type' => 'nullable|string',
             'patient.chronic_diseases' => 'nullable|string',
@@ -35,7 +36,6 @@ class CaseReportController extends Controller
             
             'services' => 'required|array|min:1',
             'extra_items' => 'nullable|array',
-            // تم تعديلexists هنا لتسمح بالتحقق حتى في الأصناف المؤرشفة ماليّاً
             'extra_items.*.id' => 'required|exists:inventory_items,id,deleted_at,NULL',
         ]);
 
@@ -49,6 +49,7 @@ class CaseReportController extends Controller
                 [
                     'full_name' => $patientData['full_name'],
                     'national_id' => $patientData['national_id'] ?? null,
+                    'age' => $patientData['age'] ?? null, // 👈 حفظ وتحديث العمر
                     'address' => $patientData['address'] ?? null,
                     'blood_type' => $patientData['blood_type'] ?? null,
                     'chronic_diseases' => $patientData['chronic_diseases'] ?? null,
@@ -65,9 +66,8 @@ class CaseReportController extends Controller
             $totalCostOfMaterials = 0;
             $itemsToSubtract = []; 
 
-            // أ) جلب الخدمات مع موادها (حتى لو كانت الخدمات مؤرشفة ناعماً مع بايرز المرضى القدامى)
             $services = Service::withTrashed()->with(['materials' => function($q) {
-                $q->withTrashed(); // جلب المواد المرتبطة حتى لو حذفت ناعماً
+                $q->withTrashed();
             }])->whereIn('id', $request->services)->get();
 
             foreach ($services as $service) {
@@ -82,10 +82,8 @@ class CaseReportController extends Controller
                 }
             }
 
-            // ب) حساب وتجهيز خصم المواد الإضافية الكاش (خارج الخدمة)
             if ($request->has('extra_items') && is_array($request->extra_items)) {
                 foreach ($request->extra_items as $extraItem) {
-                    // نستخدم withTrashed لضمان جلب بيانات المادة حتى لو تمت أرشفتها أثناء الحساب المالي المرتجع
                     $item = InventoryItem::withTrashed()->find($extraItem['id']);
                     $qtyNeeded = (float) $extraItem['quantity'];
                     $totalCostOfMaterials += ($item->cost_price * $qtyNeeded);
@@ -97,12 +95,9 @@ class CaseReportController extends Controller
                 }
             }
 
-            // ج) التحقق من توفر الكميات في المستودع (للأصناف غير المحذوفة فقط)
-            // lockForUpdate() يمنع القراءة المتزامنة في نفس الوقت من طلبين مختلفين (race condition)
             foreach ($itemsToSubtract as $itemId => $totalQty) {
                 $item = InventoryItem::withTrashed()->lockForUpdate()->find($itemId);
                 
-                // إذا كانت المادة محذوفة ناعماً وتُطلب في حالة جديدة، نمنع ذلك
                 if ($item->trashed()) {
                     return response()->json([
                         'message' => "المادة ({$item->name}) مؤرشفة ومحذوفة ناعماً، لا يمكن استخدامها في زيارة جديدة!"
@@ -116,7 +111,6 @@ class CaseReportController extends Controller
                 }
             }
 
-            // د) الخصم الفعلي المستقر من المخزن
             foreach ($itemsToSubtract as $itemId => $totalQty) {
                 $item = InventoryItem::lockForUpdate()->find($itemId);
                 if ($item) {
@@ -151,10 +145,8 @@ class CaseReportController extends Controller
                 'visit_notes' => $caseData['visit_notes'] ?? null,
             ]);
 
-            // 7. ربط الخدمات بالحالة
             $caseReport->services()->attach($request->services);
 
-            // 8. ربط المواد الإضافية
             if ($request->has('extra_items') && is_array($request->extra_items)) {
                 foreach ($request->extra_items as $extraItem) {
                     $caseReport->items()->attach($extraItem['id'], [

@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Patient extends Model
 {
-    // تأكد من وجود الحقل هنا في السطر الأخير
     protected $fillable = [
         'full_name', 
         'phone', 
-        'national_id', 
+        'national_id',
+        'age', // 👈 أضفنا حقل العمر هنا ليكون قابلاً للتعبئة الجماعية
         'address', 
         'blood_type', 
         'chronic_diseases', 

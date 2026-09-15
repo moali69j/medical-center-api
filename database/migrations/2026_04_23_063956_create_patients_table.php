@@ -11,18 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::create('patients', function (Blueprint $table) {
-    $table->id();
-    $table->string('full_name')->index(); // إضافة index للبحث السريع
-    $table->string('phone')->nullable()->index(); // قابل للبحث والغياب
-    $table->string('national_id')->nullable()->unique()->index(); 
-    $table->string('address')->nullable();
-    $table->string('blood_type')->nullable();
-    $table->text('chronic_diseases')->nullable();
-    $table->text('current_medications')->nullable();
-    $table->text('permanent_medical_notes')->nullable(); // الملاحظات الدائمة والعمليات
-    $table->timestamps();
-});
+        Schema::create('patients', function (Blueprint $table) {
+            $table->id();
+            $table->string('full_name')->index(); // إضافة index للبحث السريع
+            $table->string('phone')->nullable()->index(); // قابل للبحث
+            $table->string('national_id')->nullable()->unique()->index(); 
+            $table->unsignedInteger('age')->nullable(); // 👈 إضافة العمر هنا مباشرة في الجدول الأساسي
+            $table->string('address')->nullable();
+            $table->string('blood_type')->nullable();
+            $table->text('chronic_diseases')->nullable();
+            $table->text('current_medications')->nullable();
+            $table->text('permanent_medical_notes')->nullable(); // الملاحظات الدائمة والعمليات
+            $table->timestamps();
+        });
     }
 
     /**
