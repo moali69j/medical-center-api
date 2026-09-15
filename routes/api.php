@@ -10,7 +10,7 @@ use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\ServiceController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PatientController;
-
+use App\Models\CaseReport;
 Route::apiResource('inventory', InventoryController::class);
 Route::apiResource('services', ServiceController::class);
 Route::get('patients/search', [PatientController::class, 'search']);
@@ -64,3 +64,10 @@ Route::prefix('export')->group(function () {
 // مسارات النسخ الاحتياطي والاستعادة
 Route::post('backup/run', [App\Http\Controllers\Api\BackupController::class, 'run']);
 Route::post('backup/restore', [App\Http\Controllers\Api\BackupController::class, 'restore']);
+// مسار جلب عدد الحالات الإجمالي مباشرة للوحة التحكم
+
+Route::get('cases/count', function () {
+    return response()->json([
+        'total_cases' => CaseReport::count()
+    ]);
+});

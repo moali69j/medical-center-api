@@ -13,36 +13,30 @@ class PatientController extends Controller
      * Fixed: uses withCount() instead of map()+count() to avoid N+1 queries.
      * Paginated to prevent loading thousands of records at once.
      */
-    public function index()
-    {
-        $patients = Patient::withCount('caseReports')
-            ->latest()
-            ->paginate(15);
+   public function index()
+{
+    $patients = Patient::withCount('caseReports')
+        ->latest()
+        ->paginate(15);
 
-        return response()->json($patients);
-    }
 
-    /**
-     * البحث عن مرضى بالاسم أو الهاتف أو رقم الهوية.
-     * Fixed: uses withCount() and paginate() for efficiency.
-     */
+    return response()->json($patients); // أو response()->json($patients)
+}
+
     public function search(Request $request)
-    {
-        $query = $request->input('query');
+{
+    $query = $request->input('query');
 
-        if (empty($query)) {
-            return response()->json([]);
-        }
-
-        $patients = Patient::withCount('caseReports')
-            ->where('full_name', 'LIKE', "%{$query}%")
-            ->orWhere('phone', 'LIKE', "%{$query}%")
-            ->orWhere('national_id', 'LIKE', "%{$query}%")
-            ->with(['caseReports' => function ($q) {
-                $q->latest()->with('services');
-            }])
-            ->paginate(15);
-
-        return response()->json($patients);
+    if (empty($query)) {
+        return response()->json(Patient::withCount('caseReports')->latest()->paginate(15));
     }
+
+    $patients = Patient::withCount('caseReports')
+        ->where('full_name', 'LIKE', "%{$query}%")
+        ->orWhere('phone', 'LIKE', "%{$query}%")
+        ->orWhere('national_id', 'LIKE', "%{$query}%")
+        ->paginate(15);
+
+    return response()->json($patients);
+}
 }
