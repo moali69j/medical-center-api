@@ -69,8 +69,8 @@ class FinancialController extends Controller
 
         $totalExpensesAmount = $expenses->sum('amount');
         
-        // المعادلة الذهبية: صافي أرباح صاحب المركز الحقيقية بعد خصم المصاريف التشغيلية
-        $finalNetProfitForCenter = $totalCenterShare - $totalExpensesAmount;
+        // المعادلة الذهبية: صافي أرباح المركز الحقيقية بعد خصم المصاريف التشغيلية، ومصاريف المستودع، وتصفية الممرضين
+        $finalNetProfitForCenter = $totalRevenue - $totalExpensesAmount;
 
         // 5. إحصائيات الخدمات الأكثر استخداماً وطلباً (للرسم البياني)
         // نقوم بجلب التكرار عبر جدول الـ Pivot الوسيط

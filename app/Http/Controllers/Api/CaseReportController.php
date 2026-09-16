@@ -17,6 +17,7 @@ class CaseReportController extends Controller
     {
         // 1. التحقق من البيانات مع التحقق من حقل العمر
         $request->validate([
+            'patient.id' => 'nullable|exists:patients,id',
             'patient.full_name' => 'required|string|max:255',
             'patient.phone' => 'required|string',
             'patient.national_id' => 'nullable|string',
@@ -44,19 +45,25 @@ class CaseReportController extends Controller
             // 2. معالجة بيانات المريض التراكمية (إنشاء أو تحديث)
             $patientData = $request->input('patient');
             
-            $patient = Patient::updateOrCreate(
-                ['phone' => $patientData['phone']],
-                [
-                    'full_name' => $patientData['full_name'],
-                    'national_id' => $patientData['national_id'] ?? null,
-                    'age' => $patientData['age'] ?? null, // 👈 حفظ وتحديث العمر
-                    'address' => $patientData['address'] ?? null,
-                    'blood_type' => $patientData['blood_type'] ?? null,
-                    'chronic_diseases' => $patientData['chronic_diseases'] ?? null,
-                    'current_medications' => $patientData['current_medications'] ?? null,
-                    'permanent_medical_notes' => $patientData['permanent_medical_notes'] ?? null,
-                ]
-            );
+            $patientAttributes = [
+                'full_name' => $patientData['full_name'],
+                'phone' => $patientData['phone'],
+                'national_id' => $patientData['national_id'] ?? null,
+                'age' => $patientData['age'] ?? null,
+                'address' => $patientData['address'] ?? null,
+                'blood_type' => $patientData['blood_type'] ?? null,
+                'chronic_diseases' => $patientData['chronic_diseases'] ?? null,
+                'current_medications' => $patientData['current_medications'] ?? null,
+                'permanent_medical_notes' => $patientData['permanent_medical_notes'] ?? null,
+            ];
+
+            if (isset($patientData['id']) && $patientData['id']) {
+                $patient = Patient::findOrFail($patientData['id']);
+                $patient->update($patientAttributes);
+            } else {
+                $patient = Patient::create($patientAttributes);
+            }
+
 
             // 3. جلب الإعدادات المالية الحالية
             $creditPrice = (float) Setting::get('credit_price', 1000);
@@ -85,6 +92,9 @@ class CaseReportController extends Controller
             if ($request->has('extra_items') && is_array($request->extra_items)) {
                 foreach ($request->extra_items as $extraItem) {
                     $item = InventoryItem::withTrashed()->find($extraItem['id']);
+                    if (!$item || !$item->is_measurable) {
+                        continue; // حماية: منع احتساب أو خصم مواد العهدة العامة غير القابلة للقياس مع الزيارات الفردية
+                    }
                     $qtyNeeded = (float) $extraItem['quantity'];
                     $totalCostOfMaterials += ($item->cost_price * $qtyNeeded);
                     

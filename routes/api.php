@@ -41,10 +41,11 @@ Route::apiResource('expenses', App\Http\Controllers\Api\ExpenseController::class
 Route::get('financial/staff-reports', [App\Http\Controllers\Api\FinancialController::class, 'getStaffReport']);
 // تأكد من وجود هذا السطر لفتح نقطة الاتصال لجدول المرضى بالكامل
 Route::get('patients', [App\Http\Controllers\Api\PatientController::class, 'index']);
+Route::get('patients/{id}/cases', [App\Http\Controllers\Api\PatientController::class, 'history']);
+Route::put('patients/{id}', [App\Http\Controllers\Api\PatientController::class, 'update']);
 
 // أو إذا كنت تستخدم الـ Resource كاملاً تأكد أنه مكتوب بصيغة الجمع هكذا:
 Route::apiResource('patients', App\Http\Controllers\Api\PatientController::class);
-
 /*
 |--------------------------------------------------------------------------
 | Excel Export Routes

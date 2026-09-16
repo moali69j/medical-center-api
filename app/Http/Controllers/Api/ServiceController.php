@@ -48,9 +48,12 @@ public function store(Request $request)
 
         if ($request->has('materials') && is_array($request->materials)) {
             foreach ($request->materials as $material) {
-                $service->materials()->attach($material['id'], [
-                    'quantity' => $material['quantity']
-                ]);
+                $item = \App\Models\InventoryItem::find($material['id']);
+                if ($item && $item->is_measurable) {
+                    $service->materials()->attach($material['id'], [
+                        'quantity' => $material['quantity']
+                    ]);
+                }
             }
         }
 
@@ -80,7 +83,10 @@ public function update(Request $request, $service)
         $syncData = [];
         if ($request->has('materials') && is_array($request->materials)) {
             foreach ($request->materials as $material) {
-                $syncData[$material['id']] = ['quantity' => $material['quantity']];
+                $item = \App\Models\InventoryItem::find($material['id']);
+                if ($item && $item->is_measurable) {
+                    $syncData[$material['id']] = ['quantity' => $material['quantity']];
+                }
             }
         }
         $serviceModel->materials()->sync($syncData);

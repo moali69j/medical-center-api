@@ -10,8 +10,11 @@ class InventoryController extends Controller
 {
 public function index()
 {
-    // لارافيل هنا سيتكفل بجلب العناصر غير المحذوفة تلقائياً وبأعلى كفاءة وسرعة
-    $items = InventoryItem::latest()->get();
+    // جلب العناصر غير المحذوفة مع اختيار الأعمدة المطلوبة لتقليل حجم الحمولة المنقولة
+    $items = InventoryItem::select([
+        'id', 'name', 'quantity', 'unit', 'threshold', 
+        'is_measurable', 'cost_price', 'selling_price', 'created_at'
+    ])->orderBy('id', 'desc')->get();
     
     return response()->json($items);
 }
