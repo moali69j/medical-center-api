@@ -34,6 +34,10 @@ Route::put('settings/credit-price', function (Illuminate\Http\Request $request) 
 });
 // مسار جلب التقارير المالية المفلترة والتحليلات وإحصائيات الإكسل
 Route::get('financial/reports', [App\Http\Controllers\Api\FinancialController::class, 'getReport']);
+// مسار جلب سجل الحالات والزيارات المالي المفصل
+Route::get('financial/cases-log', [App\Http\Controllers\Api\FinancialController::class, 'getCasesLog']);
+// مسار جلب رصيد كاش الخزينة الفعلي المباشر
+Route::get('financial/treasury-balance', [App\Http\Controllers\Api\FinancialController::class, 'getTreasuryBalance']);
 
 // مسارات إدارة المصاريف التشغيلية (إضافة، عرض، حذف ناعم)
 Route::apiResource('expenses', App\Http\Controllers\Api\ExpenseController::class);

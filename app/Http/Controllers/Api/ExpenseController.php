@@ -20,12 +20,20 @@ class ExpenseController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric|min:1',
             'category' => 'required|string',
+            'transaction_type' => 'nullable|in:expense,deposit',
             'notes' => 'nullable|string',
             'case_id' => 'nullable|exists:case_reports,id'
         ]);
 
+        $transactionType = $validated['transaction_type'] ?? (
+            (str_contains($validated['category'], 'إيداع') || str_contains($validated['category'], 'تغذية'))
+                ? 'deposit' 
+                : 'expense'
+        );
+
         $expense = Expense::create([
             'amount' => $validated['amount'],
+            'transaction_type' => $transactionType,
             'category' => $validated['category'],
             'notes' => $validated['notes'] ?? null
         ]);
@@ -34,8 +42,10 @@ class ExpenseController extends Controller
             \App\Models\CaseReport::where('id', $validated['case_id'])->update(['is_paid_to_staff' => true]);
         }
 
+        $isDeposit = ($transactionType === 'deposit');
+
         return response()->json([
-            'message' => 'تم تسجيل المصروف بنجاح في الخزنة الحالية',
+            'message' => $isDeposit ? 'تم إيداع الكاش في الصندوق وتغذية الخزينة بنجاح' : 'تم تسجيل قيد الصرف بنجاح من الخزنة',
             'expense' => $expense
         ], 201);
     }
